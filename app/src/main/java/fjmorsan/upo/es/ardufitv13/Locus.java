@@ -1,5 +1,7 @@
 package fjmorsan.upo.es.ardufitv13;
 
+import android.util.Log;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -15,8 +17,8 @@ import java.util.logging.Logger;
 
 public class Locus {
 
-    public static List<Coordenada> parseFile(String filename) {
-        File archivo = new File(filename);
+    public static List<Coordenada> parseFile(File dir, String filename) {
+        File archivo = new File(dir, filename);
         FileReader fr = null;
         BufferedReader br;
         List<Coordenada> coords = null;
@@ -25,8 +27,9 @@ public class Locus {
             br = new BufferedReader(fr);
             String linea;
             coords = new ArrayList<>();
-
+            linea = br.readLine();
             while ((linea = br.readLine()) != null) {
+
                 List resultados = parseLine(linea);
                 if (!resultados.isEmpty()) {
                     coords.addAll(resultados);
@@ -52,32 +55,34 @@ public class Locus {
     }
 
     private static List parseLine(String linea) {
-
         List<Coordenada> records = new ArrayList<>();
         if (linea.startsWith("$PMTKLOX,1")) {
-            String[] split = linea.split("\\*");
-            String data = split[0];
-            String actual_checksum = split[1];
-            String generated_checksum = checksum(data);
-            if (actual_checksum.equals(generated_checksum)) {
+            if (linea.contains("*")) {
+
+                String[] split = linea.split("\\*");
+                String data = split[0];
+                String actual_checksum = split[1];
+                String generated_checksum = checksum(data);
+                if (actual_checksum.equals(generated_checksum)) {
                 /*  remove the first 3 parts - command, type, line_number
                  following this 8 byte hex strings (max 24)
                  */
-                String[] parts = data.split(",");
-                String dataFields = "";
-                for (int i = 3; i < parts.length; i++) {
-                    dataFields = dataFields + parts[i];
+                    String[] parts = data.split(",");
+                    String dataFields = "";
+                    for (int i = 3; i < parts.length; i++) {
+                        dataFields = dataFields + parts[i];
+                    }
+                    int chunksize = 32; //Basic logging
+                    while (dataFields.length() >= chunksize) {
+                        String sub = dataFields.substring(0, chunksize);
+                        int[] bytes = hexStringToIntArray(sub);
+                        Coordenada record = parseBasicRecord(bytes);
+                        records.add(record);
+                        dataFields = dataFields.substring(chunksize);
+                    }
+                } else {
+                    System.out.println("WARNING: Checksum failed. Expected " + actual_checksum + " but calculated " + generated_checksum + " for " + data);
                 }
-                int chunksize = 32; //Basic logging
-                while (dataFields.length() >= chunksize) {
-                    String sub = dataFields.substring(0, chunksize);
-                    int[] bytes = hexStringToIntArray(sub);
-                    Coordenada record = parseBasicRecord(bytes);
-                    records.add(record);
-                    dataFields = dataFields.substring(chunksize);
-                }
-            } else {
-                System.out.println("WARNING: Checksum failed. Expected " + actual_checksum + " but calculated " + generated_checksum + " for " + data);
             }
         }
         return records;

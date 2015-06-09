@@ -1,16 +1,16 @@
 package fjmorsan.upo.es.ardufitv13;
 
-import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.graphics.Color;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
-import android.text.method.ScrollingMovementMethod;
+import android.support.v4.app.FragmentActivity;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -24,14 +24,21 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.google.android.gms.maps.GoogleMap;
+import com.google.android.gms.maps.MapFragment;
+import com.google.android.gms.maps.OnMapReadyCallback;
+import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.PolygonOptions;
+
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.List;
 
 
-public class MainActivity extends Activity implements OnClickListener {
+public class MainActivity extends FragmentActivity implements OnClickListener, OnMapReadyCallback {
 
     private static final int REQUEST_ENABLE_BT = 1;
     private static final String NOMBRE_DISPOSITIVO_BT = "ARDUFIT";
@@ -50,10 +57,6 @@ public class MainActivity extends Activity implements OnClickListener {
     private TextView tvConexion;
     private BluetoothService servicio;                // Servicio de mensajes de Bluetooth
     private BluetoothDevice ultimoDispositivo;        // Ultimo dispositivo conectado
-
-    private String data = "";
-
-
     private final BroadcastReceiver bReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -87,7 +90,7 @@ public class MainActivity extends Activity implements OnClickListener {
                 // Extraemos el dispositivo del intent mediante la clave
                 // BluetoothDevice.EXTRA_DEVICE
                 BluetoothDevice dispositivo = intent.getParcelableExtra(BluetoothDevice.
-                                                                                    EXTRA_DEVICE);
+                        EXTRA_DEVICE);
 
                 // Añadimos el dispositivo al array
                 arrayDevices.add(dispositivo);
@@ -112,7 +115,7 @@ public class MainActivity extends Activity implements OnClickListener {
                 // Instanciamos un nuevo adapter para el ListView mediante la clase que acabamos de
                 // crear
                 spinner.setVisibility(View.GONE);
-                if(arrayDevices.size()>0) {
+                if (arrayDevices.size() > 0) {
                     lvDispositivos.setVisibility(View.VISIBLE);
                     configurarOnItemClickListener();
 
@@ -124,7 +127,9 @@ public class MainActivity extends Activity implements OnClickListener {
             }
         }
     };
-
+    private MapFragment mapFragment;        // Mapa google
+    private Button btnPrueba;
+    private String data = "";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -135,12 +140,14 @@ public class MainActivity extends Activity implements OnClickListener {
         btnEnviar = (Button) findViewById(R.id.btnEnviar);
         lvDispositivos = (ListView) findViewById(R.id.lvDispositivos);
         tvMensaje = (TextView) findViewById(R.id.tvMensaje);
-        tvMensaje.setMovementMethod(new ScrollingMovementMethod());
+        //tvMensaje.setMovementMethod(new ScrollingMovementMethod());
         tvConexion = (TextView) findViewById(R.id.tvConexion);
         spinner = (ProgressBar) findViewById(R.id.progressBar1);
         spinner.setVisibility(View.GONE);
         btnEnviar.setVisibility(View.GONE);
-
+        mapFragment = (MapFragment) getFragmentManager().findFragmentById(R.id.map);
+        btnPrueba = (Button) findViewById(R.id.btnPrueba);
+        mostrarMapa(false);
         configurarOnclickListener();
         configurarOnItemClickListener();
         configurarAdaptadorBluetooth();
@@ -153,6 +160,7 @@ public class MainActivity extends Activity implements OnClickListener {
         btnBluetooth.setOnClickListener(this);
         btnBuscarDispositivo.setOnClickListener(this);
         btnEnviar.setOnClickListener(this);
+        btnPrueba.setOnClickListener(this);
     }
 
     private void configurarOnItemClickListener() {
@@ -319,8 +327,23 @@ public class MainActivity extends Activity implements OnClickListener {
                 }
                 break;
             }
-            case R.id.btnEnviar:
+            case R.id.btnEnviar: {
                 enviarMensaje("e");
+            }
+            break;
+
+            case R.id.btnPrueba: {
+                List<Coordenada> lista = fileToCoordenadasList();
+                if (lista == null) {
+                    Toast.makeText(this, "Es nula", Toast.LENGTH_SHORT).show();
+                } else if (lista.isEmpty()) {
+                    Toast.makeText(this, "Esta vacia", Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(this, "Leido", Toast.LENGTH_SHORT).show();
+                }
+
+                break;
+            }
 
             default:
                 break;
@@ -336,29 +359,69 @@ public class MainActivity extends Activity implements OnClickListener {
             servicio.finalizarServicio();
         }
     }
-    protected void saveToFile(String data){
+
+    protected void saveToFile(String data) {
 
         FileOutputStream outputStream;
-        try{
-            outputStream = openFileOutput("gps.tmp",MODE_PRIVATE);
+        try {
+            outputStream = openFileOutput("gps.tmp", MODE_PRIVATE);
             outputStream.write(data.getBytes());
             outputStream.close();
-        }catch (Exception e){
+        } catch (Exception e) {
             Log.w("ExternalStorage", "Error writing internal file ", e);
         }
     }
-    protected void createExernalStorePrivateFile(String data){
+
+    protected boolean createExernalStorePrivateFile(String data) {
         File file = new File(getExternalFilesDir(null), "gps.txt");
+        boolean eval;
         try {
             OutputStream os = new FileOutputStream(file);
             os.write(data.getBytes());
             os.close();
+            eval = true;
 
         } catch (IOException e) {
             // Unable to create file, likely because external storage is
             // not currently mounted.
             Log.w("ExternalStorage", "Error writing " + file, e);
+            eval = false;
         }
+        return eval;
+
+    }
+
+    protected List<Coordenada> fileToCoordenadasList() {
+        List<Coordenada> coor = new ArrayList<>();
+        for (Coordenada coordenada : Locus.parseFile(getExternalFilesDir(null), "gps.txt")) {
+            if (coordenada.getFix() < 5) {
+                coor.add(coordenada);
+            }
+        }
+        return coor;
+    }
+
+    private void mostrarMapa(boolean estado) {
+        if (estado) {
+            mapFragment.getView().setVisibility(View.VISIBLE);
+            mapFragment.getMapAsync(this);
+        } else {
+            mapFragment.getView().setVisibility(View.GONE);
+        }
+    }
+
+    private void dibujaRuta(GoogleMap mapa, List<Coordenada> coordenadaList) {
+        PolygonOptions polygonOptions = new PolygonOptions();
+        for (Coordenada c : coordenadaList) {
+            polygonOptions.add(new LatLng(c.getLatitud(), c.getLongitud()));
+        }
+        polygonOptions.strokeWidth(5);
+        polygonOptions.strokeColor(Color.GREEN);
+        //mapa.addPolygon(polygonOptions);
+    }
+
+    @Override
+    public void onMapReady(GoogleMap googleMap) {
 
     }
 
@@ -387,17 +450,20 @@ public class MainActivity extends Activity implements OnClickListener {
                     Toast.makeText(getApplicationContext(), mensaje, Toast.LENGTH_SHORT).show();
                     break;
                 }
-                case BluetoothService.MSG_SINCRO_FIN:{
-                    tvMensaje.setText(data);
+                case BluetoothService.MSG_SINCRO_FIN: {
+                    tvMensaje.setText("Sincro Fin");
                     Toast.makeText(getApplicationContext(), R.string.SincroFin, Toast.LENGTH_SHORT).show();
                     /*
                     Aqui tenemos que tratar data, generamos el fichero
                     Lo parseamos con Locus para obtener los puntos gps
                      */
                     //saveToFile(data);
-                    createExernalStorePrivateFile(data);
+                    if (createExernalStorePrivateFile(data)) {
+                        //dibujaRuta(mapFragment.getMap(), fileToCoordenadasList());
+                        //mostrarMapa(true);
+                    }
 
-                    data ="";
+                    data = "";
                     break;
                 }
 

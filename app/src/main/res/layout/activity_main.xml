@@ -23,16 +23,18 @@
             android:text="" />
     </RelativeLayout>
 
+    <fragment xmlns:android="http://schemas.android.com/apk/res/android"
+        android:name="com.google.android.gms.maps.MapFragment"
+        android:id="@+id/map"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="10" />
+
     <TextView
         android:id="@+id/tvMensaje"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text=""
-        android:background="#ffadffb4"
-        android:layout_weight="2"
-        android:maxLines="100"
-        android:scrollbars="vertical"
-        android:gravity="top" />
+        android:background="#ffadffb4"/>
 
     <ProgressBar
         android:id="@+id/progressBar1"
@@ -54,7 +56,16 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_weight="1"
-        android:text="@string/BuscarDispositivo" />
+        android:text="@string/BuscarDispositivo"
+        android:layout_gravity="center_horizontal" />
+
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Leer"
+        android:id="@+id/btnPrueba"
+        android:layout_gravity="left" />
+
     <Button
         android:id="@+id/btnEnviar"
         android:layout_width="wrap_content"
