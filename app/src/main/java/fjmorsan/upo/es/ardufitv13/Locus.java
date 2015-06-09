@@ -1,7 +1,5 @@
 package fjmorsan.upo.es.ardufitv13;
 
-import android.util.Log;
-
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -27,9 +25,7 @@ public class Locus {
             br = new BufferedReader(fr);
             String linea;
             coords = new ArrayList<>();
-            linea = br.readLine();
             while ((linea = br.readLine()) != null) {
-
                 List resultados = parseLine(linea);
                 if (!resultados.isEmpty()) {
                     coords.addAll(resultados);
@@ -58,7 +54,6 @@ public class Locus {
         List<Coordenada> records = new ArrayList<>();
         if (linea.startsWith("$PMTKLOX,1")) {
             if (linea.contains("*")) {
-
                 String[] split = linea.split("\\*");
                 String data = split[0];
                 String actual_checksum = split[1];
