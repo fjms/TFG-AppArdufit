@@ -7,6 +7,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.graphics.Color;
+import android.location.Location;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
@@ -24,11 +25,14 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.MapFragment;
 import com.google.android.gms.maps.OnMapReadyCallback;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
-import com.google.android.gms.maps.model.PolygonOptions;
+import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.gms.maps.model.PolylineOptions;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -41,7 +45,7 @@ import java.util.List;
 public class MainActivity extends FragmentActivity implements OnClickListener, OnMapReadyCallback {
 
     private static final int REQUEST_ENABLE_BT = 1;
-    private static final String NOMBRE_DISPOSITIVO_BT = "ARDUFIT";
+    private static final String NOMBRE_DISPOSITIVO_BT = "ARDUTEST";
     private final Handler handler = new Handler(new IncomingHandlerCallback());
     private Button btnBluetooth;
     private Button btnEnviar;
@@ -57,6 +61,8 @@ public class MainActivity extends FragmentActivity implements OnClickListener, O
     private TextView tvConexion;
     private BluetoothService servicio;                // Servicio de mensajes de Bluetooth
     private BluetoothDevice ultimoDispositivo;        // Ultimo dispositivo conectado
+
+
     private final BroadcastReceiver bReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -127,8 +133,9 @@ public class MainActivity extends FragmentActivity implements OnClickListener, O
             }
         }
     };
+
     private MapFragment mapFragment;        // Mapa google
-    private Button btnPrueba;
+    private Button btnSincro;
     private String data = "";
 
     @Override
@@ -146,7 +153,8 @@ public class MainActivity extends FragmentActivity implements OnClickListener, O
         spinner.setVisibility(View.GONE);
         btnEnviar.setVisibility(View.GONE);
         mapFragment = (MapFragment) getFragmentManager().findFragmentById(R.id.map);
-        btnPrueba = (Button) findViewById(R.id.btnPrueba);
+        btnSincro = (Button) findViewById(R.id.btnSincro);
+        btnSincro.setVisibility(View.GONE);
         mostrarMapa(false);
         configurarOnclickListener();
         configurarOnItemClickListener();
@@ -160,7 +168,7 @@ public class MainActivity extends FragmentActivity implements OnClickListener, O
         btnBluetooth.setOnClickListener(this);
         btnBuscarDispositivo.setOnClickListener(this);
         btnEnviar.setOnClickListener(this);
-        btnPrueba.setOnClickListener(this);
+        btnSincro.setOnClickListener(this);
     }
 
     private void configurarOnItemClickListener() {
@@ -332,7 +340,10 @@ public class MainActivity extends FragmentActivity implements OnClickListener, O
             }
             break;
 
-            case R.id.btnPrueba: {
+
+            case R.id.btnSincro: {
+                enviarMensaje("s");
+/*
                 List<Coordenada> lista = fileToCoordenadasList();
                 if (lista == null) {
                     Toast.makeText(this, "Es nula", Toast.LENGTH_SHORT).show();
@@ -340,13 +351,18 @@ public class MainActivity extends FragmentActivity implements OnClickListener, O
                     Toast.makeText(this, "Esta vacia", Toast.LENGTH_SHORT).show();
                 } else {
                     Toast.makeText(this, "Leido", Toast.LENGTH_SHORT).show();
-                }
+                    dibujaRuta(mapFragment.getMap(), lista);
 
+                }
+                lvDispositivos.setVisibility(View.GONE);
+                mostrarMapa(true);
+*/
                 break;
             }
 
             default:
                 break;
+
         }
 
     }
@@ -364,7 +380,7 @@ public class MainActivity extends FragmentActivity implements OnClickListener, O
 
         FileOutputStream outputStream;
         try {
-            outputStream = openFileOutput("gps.tmp", MODE_PRIVATE);
+            outputStream = openFileOutput("gps.txt", MODE_PRIVATE);
             outputStream.write(data.getBytes());
             outputStream.close();
         } catch (Exception e) {
@@ -411,18 +427,82 @@ public class MainActivity extends FragmentActivity implements OnClickListener, O
     }
 
     private void dibujaRuta(GoogleMap mapa, List<Coordenada> coordenadaList) {
-        PolygonOptions polygonOptions = new PolygonOptions();
+
+        mapa.clear();
+        PolylineOptions polylineOptions = new PolylineOptions();
+        polylineOptions.geodesic(true);
+        int num_coordenadas = coordenadaList.size();
         for (Coordenada c : coordenadaList) {
-            polygonOptions.add(new LatLng(c.getLatitud(), c.getLongitud()));
+            polylineOptions.add(new LatLng(c.getLatitud(), c.getLongitud()));
         }
-        polygonOptions.strokeWidth(5);
-        polygonOptions.strokeColor(Color.GREEN);
-        //mapa.addPolygon(polygonOptions);
+        Coordenada cInicio = coordenadaList.get(0);
+        Coordenada cFin = coordenadaList.get(num_coordenadas - 1);
+        polylineOptions.color(Color.GREEN);
+        mapa.addPolyline(polylineOptions);
+        mapa.moveCamera(CameraUpdateFactory.zoomTo(17));
+        mapa.moveCamera(CameraUpdateFactory.newLatLng(new LatLng(cInicio.getLatitud(), cInicio.getLongitud())));
+        float distancia = 0;
+        for (int i = 0; i < polylineOptions.getPoints().size() - 1; i++) {
+            float[] results = new float[1];
+            Location.distanceBetween(polylineOptions.getPoints().get(i).latitude,
+                    polylineOptions.getPoints().get(i).longitude,
+                    polylineOptions.getPoints().get(i + 1).latitude,
+                    polylineOptions.getPoints().get(i + 1).longitude, results);
+            distancia = distancia + results[0];
+        }
+        if (distancia > 1000) {
+            tvMensaje.setText("Distancia recorrida: " + distancia / 1000 + " Kilometros");
+        } else {
+            tvMensaje.setText("Distancia recorrida: " + distancia + " metros");
+        }
+        //Marcas de Inicio y Final
+        mapa.addMarker(new MarkerOptions()
+                .title("Inicio")
+                .snippet(cInicio.getDate().toString())
+                .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE))
+                .position(new LatLng(cInicio.getLatitud(), cInicio.getLongitud())));
+
+        mapa.addMarker(new MarkerOptions()
+                .title("Fin")
+                .snippet(cFin.getDate().toString())
+                .position(new LatLng(cFin.getLatitud(), cFin.getLongitud())));
+
+        muestraCalorias(distancia);
+
+
+    }
+    /*
+    Suponemos que la persona va corriendo. Para calcular un caso u otro tendriamos que calcular la
+    la velocidad desde la que se desplaza de un punto a otro y en función de dicha velocidad aplicar
+    una u otra formula.
+
+    Energía gastada CORRIENDO (kcal) = Peso (kg) x Distancia (km)
+    Energía gastada ANDANDO (kcal) = (2/3) x Peso (kg) x Distancia (km)
+     */
+    public void muestraCalorias(float distancia){
+        Config conf = new Config(this);
+        String peso = conf.getUserPeso();
+        float p = Float.parseFloat(peso);
+        float calorias = p * (distancia/1000);
+        tvMensaje.setText(tvMensaje.getText()+"\nCalorias: "+calorias+" kcal");
     }
 
     @Override
     public void onMapReady(GoogleMap googleMap) {
 
+    }
+
+    @Override
+    public boolean onPrepareOptionsMenu(Menu menu) {
+        boolean result = super.onPrepareOptionsMenu(menu);
+        menu.findItem(R.id.action_settings).setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
+            @Override
+            public boolean onMenuItemClick(MenuItem menuItem) {
+                startActivity(new Intent(MainActivity.this, Configuracion.class));
+                return true;
+            }
+        });
+        return result;
     }
 
     class IncomingHandlerCallback implements Handler.Callback {
@@ -441,26 +521,54 @@ public class MainActivity extends FragmentActivity implements OnClickListener, O
                     tvMensaje.setText("Sincronizando...");
                     break;
                 }
+                case BluetoothService.MSG_MODO_BUSQUEDA_SAT: {
+                    Toast.makeText(getApplicationContext(), "Espere Led Azul", Toast.LENGTH_SHORT).show();
+                    btnSincro.setEnabled(false);
+                    break;
+                }
+                case BluetoothService.MSG_MODO_CARRERA_ON: {
+                    Toast.makeText(getApplicationContext(), "Modo Carrera ON", Toast.LENGTH_SHORT).show();
+                    btnSincro.setEnabled(false);
+                    break;
+                }
+                case BluetoothService.MSG_MODO_CARRERRA_OFF: {
+                    Toast.makeText(getApplicationContext(), "Modo Carrera OFF", Toast.LENGTH_SHORT).show();
+                    btnSincro.setEnabled(false);
+                    break;
+                }
+                case BluetoothService.MSG_MODO_SINCRO: {
+                    Toast.makeText(getApplicationContext(), "Esperando sincronización", Toast.LENGTH_SHORT).show();
+                    //Habilitamos boton sincronizar
+                    btnSincro.setEnabled(true);
+                    break;
+                }
 
                 // Mensaje de escritura: se mostrara en el Toast
                 case BluetoothService.MSG_ESCRIBIR: {
-                    buffer = (byte[]) msg.obj;
-                    mensaje = new String(buffer);
-                    mensaje = "Enviando mensaje: " + mensaje;
-                    Toast.makeText(getApplicationContext(), mensaje, Toast.LENGTH_SHORT).show();
+                    //buffer = (byte[]) msg.obj;
+                    //mensaje = new String(buffer);
+                    //mensaje = "Enviando mensaje: " + mensaje;
+                    //Toast.makeText(getApplicationContext(), mensaje, Toast.LENGTH_SHORT).show();
                     break;
                 }
                 case BluetoothService.MSG_SINCRO_FIN: {
                     tvMensaje.setText("Sincro Fin");
-                    Toast.makeText(getApplicationContext(), R.string.SincroFin, Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getApplicationContext(), R.string.SincroFin,
+                            Toast.LENGTH_SHORT).show();
                     /*
                     Aqui tenemos que tratar data, generamos el fichero
                     Lo parseamos con Locus para obtener los puntos gps
                      */
                     //saveToFile(data);
                     if (createExernalStorePrivateFile(data)) {
-                        //dibujaRuta(mapFragment.getMap(), fileToCoordenadasList());
-                        //mostrarMapa(true);
+                        List<Coordenada> lista = fileToCoordenadasList();
+                        if (lista != null && !lista.isEmpty()) {
+                            dibujaRuta(mapFragment.getMap(), lista);
+                            mostrarMapa(true);
+                        } else {
+                            Toast.makeText(getApplicationContext(), "Coordenadas Vacias",
+                                    Toast.LENGTH_SHORT).show();
+                        }
                     }
 
                     data = "";
@@ -480,6 +588,9 @@ public class MainActivity extends FragmentActivity implements OnClickListener, O
                             btnBuscarDispositivo.setVisibility(View.GONE);
                             btnEnviar.setVisibility(View.VISIBLE);
                             lvDispositivos.setVisibility(View.GONE);
+                            btnSincro.setEnabled(false);
+                            btnSincro.setVisibility(View.VISIBLE);
+                            btnBluetooth.setVisibility(View.GONE);
                             break;
                         }
 
@@ -488,6 +599,7 @@ public class MainActivity extends FragmentActivity implements OnClickListener, O
                             mensaje = getString(R.string.ConectandoA) + " " + ultimoDispositivo.getName() + " [" + ultimoDispositivo.getAddress() + "]";
                             Toast.makeText(getApplicationContext(), mensaje, Toast.LENGTH_SHORT).show();
                             btnEnviar.setEnabled(false);
+
                             break;
                         }
 

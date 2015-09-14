@@ -22,6 +22,10 @@ public class BluetoothService {
     public static final int MSG_LEER = 11;
     public static final int MSG_ESCRIBIR = 12;
     public static final int MSG_SINCRO_FIN = 13;
+    public static final int MSG_MODO_BUSQUEDA_SAT = 14;
+    public static final int MSG_MODO_CARRERA_ON = 15;
+    public static final int MSG_MODO_CARRERRA_OFF = 16;
+    public static final int MSG_MODO_SINCRO = 17;
     private static final String TAG = "BluetoothService";
     //Identificador unico de nuestro dispositivo HC-06
     private static final String UUID_SERIAL_PORT_PROFILE = "00001101-0000-1000-8000-00805F9B34FB";
@@ -151,6 +155,7 @@ public class BluetoothService {
         public void run() {
             byte[] buffer = new byte[1024];
             int bytes = 0;
+            boolean sincro = false;
             setEstado(ESTADO_CONECTADO);
             // Mientras se mantenga la conexion el hilo se mantiene en espera ocupada
             // leyendo del flujo de entrada
@@ -165,12 +170,33 @@ public class BluetoothService {
                         // Enviamos la informacion a la actividad a traves del handler.
                         // El metodo handleMessage sera el encargado de recibir el mensaje
                         // y mostrar los datos recibidos en el TextView
-                        handler.obtainMessage(MSG_LEER, bytes, -1, buffer).sendToTarget();
+
                         String mensaje = new String(buffer, 0, bytes);
                         Log.d("BTR",mensaje);
+                        if(sincro){
+                            handler.obtainMessage(MSG_LEER, bytes, -1, buffer).sendToTarget();
+                        }
                         if(mensaje.contains("$PMTK001,622")){
                             handler.obtainMessage(MSG_SINCRO_FIN).sendToTarget();
+                            sincro = false;
                         }
+                        if(mensaje.contains("m0")){
+                            handler.obtainMessage(MSG_MODO_BUSQUEDA_SAT).sendToTarget();
+                            sincro = false;
+                        }
+                        if(mensaje.contains("m1")){
+                            handler.obtainMessage(MSG_MODO_CARRERA_ON).sendToTarget();
+                            sincro = false;
+                        }
+                        if(mensaje.contains("m2")){
+                            handler.obtainMessage(MSG_MODO_CARRERRA_OFF).sendToTarget();
+                            sincro = false;
+                        }
+                        if(mensaje.contains("m3")){
+                            handler.obtainMessage(MSG_MODO_SINCRO).sendToTarget();
+                            sincro = true;
+                        }
+
                         bytes = 0;
                     } else {
                         bytes++;
@@ -237,6 +263,7 @@ public class BluetoothService {
             }
             try {
                 socket.connect();
+                //TODO
                 setEstado(ESTADO_REALIZANDO_CONEXION);
 
             } catch (IOException e) {

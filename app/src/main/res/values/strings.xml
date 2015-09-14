@@ -1,7 +1,7 @@
 <resources>
     <string name="app_name">Ardufit V1.3</string>
     <string name="hello_world">Hello world!</string>
-    <string name="action_settings">Settings</string>
+    <string name="action_settings">Configuración</string>
     <string name="Enviar">Enviar</string>
     <string name="BuscarDispositivo">Buscar dispositivo</string>
     <string name="Conectar">Conectar</string>
@@ -11,6 +11,7 @@
     <string name="Confirmar">Confirmar</string>
     <string name="Cancelar">Cancelar</string>
     <string name="Salir">Salir</string>
+    <string name="CambiarModo">Cambiar Modo</string>
     <!-- Mensajes -->
     <string name="SinConexion">Conexión actual: SIN CONEXIÓN</string>
     <string name="ConexionActual">Conexión actual:</string>
@@ -24,4 +25,5 @@
     <string name="MsgErrorConexion">Error al enviar al mensaje: no hay conexiones activas</string>
     <string name="MsgAvisoBTOFF">El Bluetooth esta desactivado</string>
     <string name="SincroFin">Sincronización finalizada</string>
+    <string name="title_activity_configuracion">Configuración de Peso y Talla</string>
 </resources>
