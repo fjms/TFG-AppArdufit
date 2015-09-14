@@ -45,7 +45,7 @@ import java.util.List;
 public class MainActivity extends FragmentActivity implements OnClickListener, OnMapReadyCallback {
 
     private static final int REQUEST_ENABLE_BT = 1;
-    private static final String NOMBRE_DISPOSITIVO_BT = "ARDUTEST";
+    private static final String NOMBRE_DISPOSITIVO_BT = "ARDUFIT";
     private final Handler handler = new Handler(new IncomingHandlerCallback());
     private Button btnBluetooth;
     private Button btnEnviar;
