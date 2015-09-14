@@ -172,27 +172,23 @@ public class BluetoothService {
                         // y mostrar los datos recibidos en el TextView
 
                         String mensaje = new String(buffer, 0, bytes);
-                        Log.d("BTR",mensaje);
-                        if(sincro){
-                            handler.obtainMessage(MSG_LEER, bytes, -1, buffer).sendToTarget();
-                        }
-                        if(mensaje.contains("$PMTK001,622")){
+                        Log.d("BTR", mensaje);
+
+                        if (mensaje.contains("$PMTK001,622")) {
                             handler.obtainMessage(MSG_SINCRO_FIN).sendToTarget();
                             sincro = false;
-                        }
-                        if(mensaje.contains("m0")){
+                        } else if (mensaje.contains("m0")) {
                             handler.obtainMessage(MSG_MODO_BUSQUEDA_SAT).sendToTarget();
                             sincro = false;
-                        }
-                        if(mensaje.contains("m1")){
+                        } else if (sincro) {
+                            handler.obtainMessage(MSG_LEER, bytes, -1, buffer).sendToTarget();
+                        } else if (mensaje.contains("m1")) {
                             handler.obtainMessage(MSG_MODO_CARRERA_ON).sendToTarget();
                             sincro = false;
-                        }
-                        if(mensaje.contains("m2")){
+                        } else if (mensaje.contains("m2")) {
                             handler.obtainMessage(MSG_MODO_CARRERRA_OFF).sendToTarget();
                             sincro = false;
-                        }
-                        if(mensaje.contains("m3")){
+                        } else if (mensaje.contains("m3")) {
                             handler.obtainMessage(MSG_MODO_SINCRO).sendToTarget();
                             sincro = true;
                         }

@@ -458,19 +458,17 @@ public class MainActivity extends FragmentActivity implements OnClickListener, O
         //Marcas de Inicio y Final
         mapa.addMarker(new MarkerOptions()
                 .title("Inicio")
-                .snippet(cInicio.getDate().toString())
                 .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE))
                 .position(new LatLng(cInicio.getLatitud(), cInicio.getLongitud())));
 
         mapa.addMarker(new MarkerOptions()
                 .title("Fin")
-                .snippet(cFin.getDate().toString())
                 .position(new LatLng(cFin.getLatitud(), cFin.getLongitud())));
 
         muestraCalorias(distancia);
 
-
     }
+
     /*
     Suponemos que la persona va corriendo. Para calcular un caso u otro tendriamos que calcular la
     la velocidad desde la que se desplaza de un punto a otro y en función de dicha velocidad aplicar
@@ -479,12 +477,14 @@ public class MainActivity extends FragmentActivity implements OnClickListener, O
     Energía gastada CORRIENDO (kcal) = Peso (kg) x Distancia (km)
     Energía gastada ANDANDO (kcal) = (2/3) x Peso (kg) x Distancia (km)
      */
-    public void muestraCalorias(float distancia){
+    public void muestraCalorias(float distancia) {
         Config conf = new Config(this);
         String peso = conf.getUserPeso();
-        float p = Float.parseFloat(peso);
-        float calorias = p * (distancia/1000);
-        tvMensaje.setText(tvMensaje.getText()+"\nCalorias: "+calorias+" kcal");
+        if (peso != null) {
+            float p = Float.parseFloat(peso);
+            float calorias = p * (distancia / 1000);
+            tvMensaje.setText(tvMensaje.getText() + "\nCalorias: " + calorias + " kcal");
+        }
     }
 
     @Override
